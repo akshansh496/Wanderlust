@@ -1,0 +1,230 @@
+<% layout("/layout/boilerplate") %>
+<!-- Leaflet Map CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+<body>
+    <div class="row mt-3">
+        <div class="col-8 offset-2">
+            <h3>Create a New Listing</h3>
+            <form method="POST" action="/listings" novalidate class="needs-validation" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="title" class="form-label">Title</label>
+                    <input name="listing[title]" placeholder="Enter title" class="form-control" required>
+                    <div class="valid-feedback">Title looks good</div>
+                    <div class="invalid-feedback">Please enter a valid title</div>
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea name="listing[description]" placeholder="Enter description" class="form-control" required></textarea>
+                    <div class="valid-feedback">Description looks good</div>
+                    <div class="invalid-feedback">Please add a short description</div>
+                </div>
+                <div class="mb-3">
+                    <label for="image" class="form-label">Upload Listing Image</label>
+                    <input name="listing[image]" type="file" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label for="price" class="form-label">Price</label>
+                    <input name="listing[price]" placeholder="Enter price" type="number" class="form-control" required>
+                    <div class="invalid-feedback">Please enter valid price</div>
+                </div>
+
+                <!-- Location Search -->
+                <div class="mb-3">
+                    <label for="location" class="form-label">Location (Address)</label>
+                    <div class="input-group">
+                        <input name="listing[location]" id="location" placeholder="Enter location (e.g. Jaipur, Rajasthan)" class="form-control" required autocomplete="off">
+                        <button type="button" class="btn btn-outline-dark" id="search-btn">Search on Map</button>
+                    </div>
+                    <div class="invalid-feedback">Please enter a valid location</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="country" class="form-label">Country</label>
+                    <input name="listing[country]" id="country" placeholder="Enter country" class="form-control" required>
+                    <div class="invalid-feedback">Please enter country name</div>
+                </div>
+
+                <!-- Category Field -->
+                <div class="mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <select name="listing[category]" id="category" class="form-select" required>
+                        <option value="" disabled selected>Select a category</option>
+                        <% for(let cat of categoriesList) { %>
+                            <option value="<%= cat.name %>"><%= cat.name %></option>
+                        <% } %>
+                    </select>
+                    <div class="invalid-feedback">Please select a category</div>
+                </div>
+
+                <!-- Key Features checkboxes -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Key Features (Select all that apply)</label>
+                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-2">
+                        <% for(let feat of featuresList) { %>
+                            <div class="col">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="listing[features]" value="<%= feat.name %>" id="feature-<%= feat.name.replace(/\s+/g, '-') %>">
+                                    <label class="form-check-label" for="feature-<%= feat.name.replace(/\s+/g, '-') %>" style="cursor: pointer;">
+                                        <i class="<%= feat.icon %> me-1 text-muted"></i><%= feat.name %>
+                                    </label>
+                                </div>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+
+                <!-- Leaflet Interactive Map -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Pin Exact Location on Map *</label>
+                    <div id="map-error" class="alert alert-danger small py-2 mb-2" style="display: none;">
+                        Please select a location on the map by searching or clicking on it.
+                    </div>
+                    <div id="map" style="height: 350px; border-radius: 8px; border: 1px solid #ced4da;" class="mb-3"></div>
+                    
+                    <!-- Hidden Lat/Lng Inputs -->
+                    <input type="hidden" name="listing[lat]" id="lat-input" required>
+                    <input type="hidden" name="listing[lng]" id="lng-input" required>
+                </div>
+
+                <button class="btn btn-dark add-btn w-100 mb-5">Add Listing</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Leaflet Map JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Initialise map centered on India
+            const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            let marker = null;
+            const latInput = document.getElementById("lat-input");
+            const lngInput = document.getElementById("lng-input");
+            const locationInput = document.getElementById("location");
+            const countryInput = document.getElementById("country");
+            const searchBtn = document.getElementById("search-btn");
+            const mapError = document.getElementById("map-error");
+
+            function updateCoordinates(lat, lng) {
+                latInput.value = lat;
+                lngInput.value = lng;
+                mapError.style.display = "none";
+            }
+
+            function updateMarker(lat, lng) {
+                if (marker) {
+                    marker.setLatLng([lat, lng]);
+                } else {
+                    marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+                    
+                    // Listen to dragend event
+                    marker.on('dragend', function() {
+                        const position = marker.getLatLng();
+                        updateCoordinates(position.lat, position.lng);
+                        reverseGeocode(position.lat, position.lng);
+                    });
+                }
+                map.setView([lat, lng], 13);
+            }
+
+            // Click on map to place marker
+            map.on('click', (e) => {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                updateMarker(lat, lng);
+                updateCoordinates(lat, lng);
+                reverseGeocode(lat, lng);
+            });
+
+            // Geocode search function
+            function searchLocation() {
+                const query = locationInput.value.trim();
+                if (!query) {
+                    alert("Please enter a location to search.");
+                    return;
+                }
+
+                searchBtn.disabled = true;
+                searchBtn.textContent = "Searching...";
+
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.length > 0) {
+                            const lat = parseFloat(data[0].lat);
+                            const lon = parseFloat(data[0].lon);
+                            updateMarker(lat, lon);
+                            updateCoordinates(lat, lon);
+
+                            // Parse address parts
+                            const addressParts = data[0].display_name.split(',');
+                            const countryName = addressParts[addressParts.length - 1].trim();
+                            countryInput.value = countryName;
+                        } else {
+                            alert("Location not found. Please pin the location manually on the map.");
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Geocoding search error:", err);
+                        alert("Error searching location. Please select it manually.");
+                    })
+                    .finally(() => {
+                        searchBtn.disabled = false;
+                        searchBtn.textContent = "Search on Map";
+                    });
+            }
+
+            searchBtn.addEventListener("click", searchLocation);
+            
+            // Reverse geocode lat/lng to address
+            function reverseGeocode(lat, lng) {
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.display_name) {
+                            const addr = data.address;
+                            const cityOrTown = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
+                            const road = addr.road || addr.suburb || addr.neighbourhood || '';
+                            
+                            let displayAddr = '';
+                            if (road) displayAddr += road;
+                            if (cityOrTown) displayAddr += (displayAddr ? ', ' : '') + cityOrTown;
+                            if (!displayAddr) displayAddr = data.display_name;
+
+                            locationInput.value = displayAddr;
+                            if (addr.country) {
+                                countryInput.value = addr.country;
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Reverse geocoding error:", err);
+                    });
+            }
+
+            // Prevent form submit if map has not been pinned
+            const form = document.querySelector(".needs-validation");
+            form.addEventListener("submit", (e) => {
+                const lat = latInput.value;
+                const lng = lngInput.value;
+
+                if (!lat || !lng || parseFloat(lat) === 0 || parseFloat(lng) === 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    mapError.style.display = "block";
+                    document.getElementById("map").scrollIntoView({ behavior: "smooth" });
+                } else {
+                    mapError.style.display = "none";
+                }
+                form.classList.add("was-validated");
+            });
+        });
+    </script>
+</body>

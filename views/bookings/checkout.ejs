@@ -1,0 +1,137 @@
+<% layout("/layout/boilerplate") %>
+<body>
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <!-- Status warnings -->
+                <% if (failed) { %>
+                    <div class="alert alert-danger shadow-sm rounded-3 mb-4 d-flex align-items-center">
+                        <i class="fa-solid fa-circle-xmark fa-lg me-2"></i>
+                        <div><strong>Payment Failed:</strong> Please retry processing your payment.</div>
+                    </div>
+                <% } %>
+                <% if (cancelled) { %>
+                    <div class="alert alert-warning shadow-sm rounded-3 mb-4 d-flex align-items-center">
+                        <i class="fa-solid fa-triangle-exclamation fa-lg me-2 text-warning"></i>
+                        <div>Payment cancelled or closed. You can retry paying when you are ready.</div>
+                    </div>
+                <% } %>
+
+                <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="bg-danger text-white px-4 py-3 text-center">
+                        <h4 class="fw-bold mb-0"><i class="fa-solid fa-credit-card me-2"></i>Secure Booking Checkout</h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Property Overview -->
+                        <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+                            <img src="<%= booking.listing.image.url %>" class="rounded-3 me-3" style="width: 80px; height: 80px; object-fit: cover;" alt="property">
+                            <div>
+                                <h5 class="fw-bold mb-1"><%= booking.listing.title %></h5>
+                                <p class="text-secondary small mb-0"><i class="fa-solid fa-location-dot me-1"></i><%= booking.listing.location %>, <%= booking.listing.country %></p>
+                            </div>
+                        </div>
+
+                        <!-- Date Summary -->
+                        <h6 class="fw-bold mb-3"><i class="fa-regular fa-calendar-days me-2 text-danger"></i>Reservation Details</h6>
+                        <div class="row g-2 mb-4 text-center">
+                            <div class="col-6">
+                                <div class="p-2 border rounded-3 bg-light">
+                                    <div class="small text-secondary">Check-In</div>
+                                    <div class="fw-bold"><%= new Date(booking.checkInDate).toLocaleDateString("en-US", {month: 'short', day: 'numeric', year: 'numeric'}) %></div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 border rounded-3 bg-light">
+                                    <div class="small text-secondary">Check-Out</div>
+                                    <div class="fw-bold"><%= new Date(booking.checkOutDate).toLocaleDateString("en-US", {month: 'short', day: 'numeric', year: 'numeric'}) %></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-4 pb-2 border-bottom">
+                            <span><i class="fa-solid fa-users me-2 text-danger"></i>Total Guests</span>
+                            <span class="fw-bold"><%= booking.guestCount %> Guest<%= booking.guestCount > 1 ? 's' : '' %></span>
+                        </div>
+
+                        <!-- Price Breakdown -->
+                        <h6 class="fw-bold mb-3"><i class="fa-solid fa-receipt me-2 text-danger"></i>Price Breakdown</h6>
+                        <div class="d-flex justify-content-between mb-2 small text-secondary">
+                            <span>Base Accommodation (₹<%= booking.listing.price.toLocaleString("en-IN") %> x <%= nights %> nights)</span>
+                            <span>₹<%= pricing.basePrice.toLocaleString("en-IN") %></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 small text-secondary">
+                            <span>Platform Fee (5%)</span>
+                            <span>₹<%= pricing.platformFee.toLocaleString("en-IN") %></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3 small text-secondary">
+                            <span>GST (18% on Base Price)</span>
+                            <span>₹<%= pricing.gst.toLocaleString("en-IN") %></span>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between fw-bold mb-4 fs-5">
+                            <span>Total Amount</span>
+                            <span class="text-danger">₹<%= pricing.total.toLocaleString("en-IN") %></span>
+                        </div>
+
+                        <!-- Razorpay checkout trigger -->
+                        <form id="payment-form" action="/listings/<%= booking.listing._id %>/bookings/<%= booking._id %>/verify" method="POST">
+                            <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
+                            <input type="hidden" name="razorpay_order_id" id="razorpay_order_id" value="<%= booking.razorpayOrderId %>">
+                            <input type="hidden" name="razorpay_signature" id="razorpay_signature">
+
+                            <button type="button" class="btn btn-danger w-100 py-3 fw-bold fs-6 shadow-sm rounded-pill mb-2" id="pay-btn">
+                                <i class="fa-solid fa-shield-halved me-2"></i>Pay Now (₹<%= pricing.total.toLocaleString("en-IN") %>)
+                            </button>
+                        </form>
+
+                        <a href="/profile?tab=bookings" class="btn btn-outline-secondary w-100 py-2 rounded-pill mt-2">
+                            Pay Later / Return
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Razorpay Checkout script -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        document.getElementById('pay-btn').onclick = function(e){
+            e.preventDefault();
+            
+            var options = {
+                "key": "<%= razorpayKeyId %>",
+                "amount": "<%= Math.round(pricing.total * 100) %>",
+                "currency": "INR",
+                "name": "Wanderlust Rentals",
+                "description": "Booking stay for <%= booking.listing.title %>",
+                "image": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80",
+                "order_id": "<%= booking.razorpayOrderId %>",
+                "handler": function (response){
+                    // Success callback
+                    document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id;
+                    document.getElementById('razorpay_signature').value = response.razorpay_signature;
+                    document.getElementById('payment-form').submit();
+                },
+                "prefill": {
+                    "name": "<%= currUser.username %>",
+                    "email": "<%= currUser.email %>"
+                },
+                "theme": {
+                    "color": "#fe424d"
+                },
+                "modal": {
+                    "ondismiss": function() {
+                        window.location.href = "/listings/<%= booking.listing._id %>/bookings/<%= booking._id %>/checkout?cancelled=true";
+                    }
+                }
+            };
+            
+            var rzp1 = new Razorpay(options);
+            rzp1.on('payment.failed', function (response){
+                window.location.href = "/listings/<%= booking.listing._id %>/bookings/<%= booking._id %>/checkout?failed=true";
+            });
+            rzp1.open();
+        }
+    </script>
+</body>

@@ -1,0 +1,15 @@
+<% layout("/layout/boilerplate") %>
+<div class="row mt-3">
+    <h1 class="col-6 offset-3 mb-3">Forgot Password</h1>
+    <div class="col-6 offset-3">
+        <p class="text-secondary small">Enter your registered email address below, and we will generate a password reset link for you.</p>
+        <form action="/forgot-password" method="POST" class="needs-validation" novalidate>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" name="email" id="email" class="form-control" placeholder="Enter your email" required autocomplete="off">
+                <div class="invalid-feedback">Please enter a valid email address.</div>
+            </div>
+            <button class="btn btn-danger w-100" style="border-radius: 20px;">Send Reset Link</button>
+        </form>
+    </div>
+</div>

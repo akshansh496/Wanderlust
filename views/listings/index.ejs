@@ -1,0 +1,376 @@
+<% layout("/layout/boilerplate") %>
+<body>
+    <style>
+        #filters-container {
+            display: flex;
+            flex-direction: column;
+            margin-top: 1rem;
+        }
+        #filters {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            align-items: center;
+            padding-bottom: 0.5rem;
+            -webkit-overflow-scrolling: touch;
+        }
+        #filters::-webkit-scrollbar {
+            display: none; /* Hide scrollbar for clean UI */
+        }
+        .filter {
+            text-align: center;
+            margin-right: 2rem;
+            margin-top: 1rem;
+            opacity: 0.7;
+            transition: all 0.2s ease-in-out;
+            border-bottom: 2px solid transparent;
+            padding-bottom: 0.25rem;
+            min-width: 60px;
+        }
+        .filter p {
+            font-size: 0.8rem;
+            margin-bottom: 0;
+        }
+        .filter:hover {
+            opacity: 1;
+            cursor: pointer;
+        }
+        .filter.active-filter {
+            opacity: 1;
+            border-bottom: 2px solid black;
+            font-weight: 600;
+        }
+        .tax-toggle {
+            border: 1px solid #ced4da;
+            border-radius: 1rem;
+            padding: 0.75rem 1rem;
+            height: 3.25rem;
+            display: flex;
+            align-items: center;
+            margin-top: 1rem;
+            white-space: nowrap;
+        }
+        /* Features filters styling */
+        .feature-filters-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .feature-pill-btn {
+            border-radius: 20px;
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #ced4da;
+            background-color: white;
+            color: #495057;
+            transition: all 0.25s ease;
+        }
+        .hover-heart:hover i {
+            color: #fe424d !important;
+            font-weight: 900 !important;
+            transform: scale(1.15);
+        }
+        .hover-heart i {
+            transition: all 0.2s ease-in-out;
+            text-shadow: 0 0 4px rgba(0,0,0,0.5);
+        }
+        .listing-card {
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .listing-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+
+        .feature-pill-btn:hover {
+            background-color: #f8f9fa;
+            border-color: #6c757d;
+        }
+        .feature-pill-btn.active-feature {
+            background-color: #fe424d;
+            color: white;
+            border-color: #fe424d;
+        }
+        /* Tooltip styling adjustment */
+        .tooltip-inner {
+            text-align: left !important;
+            padding: 0.5rem 0.75rem;
+        }
+        .price-display {
+            font-size: 0.95rem;
+            color: #222222;
+        }
+    </style>
+
+    <div id="filters-container">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <!-- Category Icons Row -->
+            <div id="filters" class="flex-grow-1">
+                <% for(let cat of categoriesList) { %>
+                    <% const isActive = (category === cat.name); %>
+                    <div class="filter <%= isActive ? 'active-filter' : '' %>" data-category="<%= cat.name %>">
+                        <div><i class="<%= cat.icon %>"></i></div>
+                        <p><%= cat.name %></p>
+                    </div>
+                <% } %>
+            </div>
+
+            <!-- Tax Toggle Switch -->
+            <div class="tax-toggle ms-lg-3 mb-2 mb-lg-0">
+                <div class="form-check-reverse form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="switchCheckChecked">
+                    <label class="form-check-label fw-bold" for="switchCheckChecked" style="cursor: pointer;">Display total after taxes</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Feature Filters Row -->
+        <div class="feature-filters-container">
+            <span class="fw-bold text-secondary me-3 mb-2" style="font-size: 0.9rem;"><i class="fa-solid fa-sliders me-1"></i>Filter by features:</span>
+            <div class="d-flex flex-wrap flex-grow-1">
+                <% for(let feat of featuresList) { %>
+                    <% const isActive = activeFeatures.split(",").map(f => f.trim()).includes(feat.name); %>
+                    <button type="button" 
+                            class="feature-pill-btn me-2 mb-2 <%= isActive ? 'active-feature' : '' %>"
+                            data-feature="<%= feat.name %>">
+                        <i class="<%= feat.icon %> me-1"></i><%= feat.name %>
+                    </button>
+                <% } %>
+            </div>
+            
+            <!-- Clear Filters Button -->
+            <% if(category || activeFeatures || search) { %>
+                <a href="/listings" class="btn btn-dark btn-sm mb-2 ms-auto" style="border-radius: 20px;">
+                    <i class="fa-solid fa-trash-can me-1"></i>Clear Filters
+                </a>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Listings Grid -->
+    <div class="row row-cols-lg-3 row-cols-md-2 row-cols-sm-1 mt-3">
+        <% if(allListings.length === 0) { %>
+            <div class="col-12 mt-5 text-center">
+                <div class="alert alert-light p-5 border shadow-sm rounded-4">
+                    <i class="fa-regular fa-folder-open fa-3x text-muted mb-3"></i>
+                    <h3 class="fw-bold">No Listings Found</h3>
+                    <p class="text-muted">We couldn't find any listings matching your search or filters. Try adjusting them or clear all filters.</p>
+                    <a href="/listings" class="btn btn-danger mt-2 px-4 py-2" style="border-radius: 25px;">Clear All Filters</a>
+                </div>
+            </div>
+        <% } else { %>
+            <% for(let listing of allListings){ %>
+                <% const taxBreakdown = calculateTax(listing.price); %>
+                <a href="/listings/<%=listing._id%>" class="listing-link col mb-4" 
+                   data-title="<%= listing.title %>"
+                   data-location="<%= listing.location %>, <%= listing.country %>"
+                   data-description="<%= listing.description %>"
+                   data-category="<%= listing.category %>">
+                    <div class="card listing-card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative">
+                        <!-- Heart / Wishlist icon -->
+                        <div class="position-absolute top-0 end-0 p-3" style="z-index: 5;">
+                            <button type="button" class="btn btn-link text-white p-0 shadow-none hover-heart">
+                                <i class="fa-regular fa-heart fs-4"></i>
+                            </button>
+                        </div>
+                        <img src="<%=listing.image.url%>" class="card-img-top" alt="listing_image" style="height: 18rem; object-fit: cover;">
+                        <div class="card-body px-2 py-3">
+                            <!-- Category and Availability badges -->
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle py-1 px-2" style="font-size: 0.75rem;"><%= listing.category %></span>
+                                <% 
+                                    let badgeColor = "bg-success-subtle text-success border border-success-subtle";
+                                    if (listing.availabilityStatus === "Fully Booked") {
+                                        badgeColor = "bg-danger-subtle text-danger border border-danger-subtle";
+                                    } else if (listing.availabilityStatus === "Limited Availability") {
+                                        badgeColor = "bg-warning-subtle text-warning-emphasis border border-warning-subtle";
+                                    }
+                                %>
+                                <span class="badge <%= badgeColor %> py-1 px-2" style="font-size: 0.75rem;"><%= listing.availabilityStatus %></span>
+                            </div>
+                            
+                            <!-- Title & Rating -->
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <b class="text-truncate flex-grow-1" style="font-size: 1.05rem; color: #222;"><%=listing.title%></b>
+                                <% 
+                                    let sumRating = 0;
+                                    let avgRating = 0;
+                                    if (listing.reviews && listing.reviews.length > 0) {
+                                        sumRating = listing.reviews.reduce((acc, r) => acc + r.rating, 0);
+                                        avgRating = (sumRating / listing.reviews.length).toFixed(1);
+                                    }
+                                %>
+                                <span class="ms-2 small text-dark fw-semibold" style="white-space: nowrap;">
+                                    <i class="fa-solid fa-star text-warning me-1"></i><%= avgRating > 0 ? avgRating : "New" %>
+                                </span>
+                            </div>
+                            
+                            <!-- Location -->
+                            <p class="text-muted small mb-2"><%=listing.location%>, <%=listing.country%></p>
+                            
+                            <!-- Feature badges (show first 2 features) -->
+                            <% if (listing.features && listing.features.length > 0) { %>
+                                <div class="d-flex gap-1 mb-3 flex-wrap">
+                                    <% for (let i = 0; i < Math.min(2, listing.features.length); i++) { %>
+                                        <span class="badge bg-light text-dark border px-2 py-1 fw-normal" style="font-size: 0.7rem;"><%= listing.features[i] %></span>
+                                    <% } %>
+                                    <% if (listing.features.length > 2) { %>
+                                        <span class="badge bg-light text-muted border px-2 py-1 fw-normal" style="font-size: 0.7rem;">+<%= listing.features.length - 2 %></span>
+                                    <% } %>
+                                </div>
+                            <% } %>
+                            
+                            <!-- Pricing & Tax Switch -->
+                            <p class="card-text mb-0">
+                                <span class="price-display base-price fw-bold" style="font-size: 1.05rem;">
+                                    &#8377;<%=listing.price.toLocaleString("en-IN")%> <span class="text-secondary small fw-normal">/ night</span>
+                                </span>
+                                <span class="price-display total-price fw-bold" style="display: none; font-size: 1.05rem;">
+                                    &#8377;<%=taxBreakdown.total.toLocaleString("en-IN", {minimumFractionDigits: 2})%> <span class="text-secondary small fw-normal">/ night</span>
+                                    <i class="fa-solid fa-circle-info text-secondary ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-html="true" 
+                                       title="<b>Price Breakdown</b><br>Base Price: ₹<%= taxBreakdown.basePrice.toFixed(2) %><br>Platform Fee (5%): ₹<%= taxBreakdown.platformFee.toFixed(2) %><br>GST (18% on Base): ₹<%= taxBreakdown.gst.toFixed(2) %><br>Total: ₹<%= taxBreakdown.total.toFixed(2) %>"></i>
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </a>
+            <% } %>
+        <% } %>
+    </div>
+
+    <!-- Client-Side Filter Interactions & Tooltips -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // 1. Initialize Bootstrap Tooltips
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+            // 2. Tax Switch Checked Toggle
+            const taxSwitch = document.getElementById("switchCheckChecked");
+            
+            // Check session storage to maintain state across reloads
+            if (sessionStorage.getItem("displayTax") === "true") {
+                taxSwitch.checked = true;
+                toggleTaxInfo(true);
+            }
+
+            taxSwitch.addEventListener("change", () => {
+                const showTotal = taxSwitch.checked;
+                sessionStorage.setItem("displayTax", showTotal);
+                toggleTaxInfo(showTotal);
+            });
+
+            function toggleTaxInfo(showTotal) {
+                const basePrices = document.getElementsByClassName("base-price");
+                const totalPrices = document.getElementsByClassName("total-price");
+                
+                for (let base of basePrices) {
+                    base.style.display = showTotal ? "none" : "inline";
+                }
+                for (let total of totalPrices) {
+                    total.style.display = showTotal ? "inline" : "none";
+                }
+            }
+
+            // 3. Category Filter Click Handler
+            document.querySelectorAll(".filter[data-category]").forEach(el => {
+                el.addEventListener("click", () => {
+                    const cat = el.getAttribute("data-category");
+                    const urlParams = new URLSearchParams(window.location.search);
+                    
+                    if (urlParams.get("category") === cat) {
+                        urlParams.delete("category");
+                    } else {
+                        urlParams.set("category", cat);
+                    }
+                    
+                    window.location.search = urlParams.toString();
+                });
+            });
+
+            // 4. Feature Filter Click Handler
+            document.querySelectorAll(".feature-pill-btn[data-feature]").forEach(el => {
+                el.addEventListener("click", () => {
+                    const feature = el.getAttribute("data-feature");
+                    const urlParams = new URLSearchParams(window.location.search);
+                    let activeFeats = urlParams.get("features") ? urlParams.get("features").split(",") : [];
+                    
+                    // Normalize space/trim
+                    activeFeats = activeFeats.map(f => f.trim()).filter(Boolean);
+                    
+                    const index = activeFeats.indexOf(feature);
+                    if (index > -1) {
+                        activeFeats.splice(index, 1);
+                    } else {
+                        activeFeats.push(feature);
+                    }
+                    
+                    if (activeFeats.length > 0) {
+                        urlParams.set("features", activeFeats.join(","));
+                    } else {
+                        urlParams.delete("features");
+                    }
+                    
+                    window.location.search = urlParams.toString();
+                });
+            });
+
+            // 5. Instant Frontend Search Filtering
+            const searchInput = document.querySelector(".search-inp");
+            if (searchInput) {
+                searchInput.addEventListener("input", () => {
+                    const query = searchInput.value.trim().toLowerCase();
+                    const cards = document.querySelectorAll(".listing-link.col");
+                    let foundAny = false;
+                    
+                    cards.forEach(card => {
+                        const title = card.getAttribute("data-title")?.toLowerCase() || "";
+                        const location = card.getAttribute("data-location")?.toLowerCase() || "";
+                        const description = card.getAttribute("data-description")?.toLowerCase() || "";
+                        const category = card.getAttribute("data-category")?.toLowerCase() || "";
+                        
+                        if (
+                            title.includes(query) ||
+                            location.includes(query) ||
+                            description.includes(query) ||
+                            category.includes(query)
+                        ) {
+                            card.style.display = "";
+                            foundAny = true;
+                        } else {
+                            card.style.display = "none";
+                        }
+                    });
+                    
+                    // Show/hide "No listings found" container dynamically if no cards match
+                    let noResultsContainer = document.getElementById("no-results-instant");
+                    if (!foundAny) {
+                        if (!noResultsContainer) {
+                            noResultsContainer = document.createElement("div");
+                            noResultsContainer.id = "no-results-instant";
+                            noResultsContainer.className = "col-12 mt-5 text-center";
+                            noResultsContainer.innerHTML = `
+                                <div class="alert alert-light p-5 border shadow-sm rounded-4">
+                                    <i class="fa-regular fa-folder-open fa-3x text-muted mb-3"></i>
+                                    <h3 class="fw-bold">No Listings Found</h3>
+                                    <p class="text-muted">We couldn't find any listings matching your search.</p>
+                                </div>
+                            `;
+                            const row = document.querySelector(".row.row-cols-lg-3");
+                            if (row) row.appendChild(noResultsContainer);
+                        } else {
+                            noResultsContainer.style.display = "";
+                        }
+                    } else if (noResultsContainer) {
+                        noResultsContainer.style.display = "none";
+                    }
+                });
+            }
+        });
+    </script>
+</body>

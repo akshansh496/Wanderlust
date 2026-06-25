@@ -1,0 +1,626 @@
+<% layout("/layout/boilerplate") %>
+<body>
+    <div class="row mt-4">
+        <!-- Sidebar Navigation -->
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm border rounded-4 p-3 text-center mb-3">
+                <img src="<%= currUser.profilePicture %>" alt="avatar" class="rounded-circle mx-auto mb-3" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #fe424d;">
+                <h4 class="fw-bold"><%= currUser.username %></h4>
+                <p class="text-secondary small mb-2"><i class="fa-regular fa-envelope me-1"></i><%= currUser.email %></p>
+                <p class="text-secondary small mb-3"><i class="fa-regular fa-calendar me-1"></i>Joined: <%= new Date(currUser.joinDate).toLocaleDateString("en-US", {month: 'long', year: 'numeric'}) %></p>
+                
+                <!-- Quick stats -->
+                <hr>
+                <div class="list-group list-group-flush text-start">
+                    <a href="/profile?tab=info" class="list-group-item list-group-item-action border-0 py-2 rounded-2 <%= tab === 'info' ? 'bg-danger text-white fw-bold' : '' %>">
+                        <i class="fa-regular fa-user me-2"></i>Profile Details
+                    </a>
+                    <a href="/profile?tab=bookings" class="list-group-item list-group-item-action border-0 py-2 rounded-2 <%= tab === 'bookings' ? 'bg-danger text-white fw-bold' : '' %>">
+                        <i class="fa-solid fa-suitcase me-2"></i>My Bookings
+                    </a>
+                    <a href="/profile?tab=payments" class="list-group-item list-group-item-action border-0 py-2 rounded-2 <%= tab === 'payments' ? 'bg-danger text-white fw-bold' : '' %>">
+                        <i class="fa-solid fa-receipt me-2"></i>Payment History
+                    </a>
+                    <a href="/profile?tab=listings" class="list-group-item list-group-item-action border-0 py-2 rounded-2 <%= tab === 'listings' ? 'bg-danger text-white fw-bold' : '' %>">
+                        <i class="fa-solid fa-house-chimney me-2"></i>My Listings
+                    </a>
+                    <a href="/profile?tab=host-dashboard" class="list-group-item list-group-item-action border-0 py-2 rounded-2 <%= tab === 'host-dashboard' ? 'bg-danger text-white fw-bold' : '' %>">
+                        <i class="fa-solid fa-chart-line me-2"></i>Host Dashboard
+                    </a>
+                    <a href="/profile?tab=requests" class="list-group-item list-group-item-action border-0 py-2 rounded-2 <%= tab === 'requests' ? 'bg-danger text-white fw-bold' : '' %>">
+                        <i class="fa-solid fa-envelope-open-text me-2"></i>Booking Requests
+                    </a>
+                    <a href="/profile?tab=reviews" class="list-group-item list-group-item-action border-0 py-2 rounded-2 <%= tab === 'reviews' ? 'bg-danger text-white fw-bold' : '' %>">
+                        <i class="fa-regular fa-star me-2"></i>Reviews Received
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="col-md-9 mb-4">
+            <div class="card shadow-sm border rounded-4 p-4">
+                
+                <!-- TAB 1: PROFILE DETAILS -->
+                <% if (tab === 'info') { %>
+                    <h3 class="fw-bold mb-4">Profile Information</h3>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary fw-semibold">Name / Username</label>
+                            <input class="form-control bg-light" value="<%= currUser.username %>" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary fw-semibold">Email Address</label>
+                            <input class="form-control bg-light" value="<%= currUser.email %>" readonly>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <h4 class="fw-bold mb-3">Update Profile Picture</h4>
+                    <form action="/profile/update-picture" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="profilePicture" class="form-label text-secondary small fw-semibold">Upload Profile Image (png, jpg, jpeg, webp | Max 2MB)</label>
+                            <input type="file" class="form-control" name="profilePicture" id="profilePicture" accept="image/png, image/jpeg, image/jpg, image/webp" required>
+                            <div class="invalid-feedback">Please select an image file to upload.</div>
+                        </div>
+                        <button class="btn btn-danger px-4" style="border-radius: 20px;">Upload & Save</button>
+                    </form>
+                <% } %>
+
+                <!-- TAB 2: MY BOOKINGS -->
+                <% if (tab === 'bookings') { %>
+                    <h3 class="fw-bold mb-4">My Bookings</h3>
+                    <% if (data.myBookings && data.myBookings.length > 0) { %>
+                        <div class="row g-3">
+                            <% for (let booking of data.myBookings) { %>
+                                <% 
+                                    const today = new Date();
+                                    today.setHours(0,0,0,0);
+                                    let stayStatus = "Upcoming";
+                                    let statusColor = "bg-primary";
+                                    
+                                    if (booking.bookingStatus === "Cancelled") {
+                                        stayStatus = "Cancelled";
+                                        statusColor = "bg-secondary";
+                                    } else if (booking.bookingStatus === "Rejected") {
+                                        stayStatus = "Rejected";
+                                        statusColor = "bg-danger";
+                                    } else if (booking.bookingStatus === "Completed") {
+                                        stayStatus = "Completed";
+                                        statusColor = "bg-success";
+                                    } else if (booking.bookingStatus === "Pending") {
+                                        stayStatus = "Pending Approval";
+                                        statusColor = "bg-warning text-dark";
+                                    } else if (booking.checkInDate <= today && booking.checkOutDate >= today) {
+                                        stayStatus = "Ongoing";
+                                        statusColor = "bg-info text-white";
+                                    }
+                                %>
+                                <div class="col-12 mb-3">
+                                    <div class="card border rounded-3 p-3 shadow-sm h-100">
+                                        <div class="row g-3 align-items-center">
+                                            <div class="col-md-3">
+                                                <img src="<%= booking.listing.image.url %>" class="img-fluid rounded-3" style="max-height: 120px; width: 100%; object-fit: cover;" alt="property">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h5 class="fw-bold mb-1"><%= booking.listing.title %></h5>
+                                                <p class="text-secondary small mb-2"><i class="fa-solid fa-location-dot me-1"></i><%= booking.listing.location %>, <%= booking.listing.country %></p>
+                                                <div class="d-flex flex-wrap gap-2 text-secondary small mb-2">
+                                                    <span><i class="fa-regular fa-calendar-days me-1"></i><%= new Date(booking.checkInDate).toLocaleDateString() %> - <%= new Date(booking.checkOutDate).toLocaleDateString() %></span>
+                                                    <span>&middot;</span>
+                                                    <span><i class="fa-solid fa-users me-1"></i><%= booking.guestCount %> guest<%= booking.guestCount > 1 ? 's' : '' %></span>
+                                                </div>
+                                                <p class="mb-0 small">Host: <strong><%= booking.host.username %></strong> &middot; <%= booking.paymentStatus === 'Paid' ? 'Paid' : 'Amount' %>: <strong class="text-danger">&#8377;<%= booking.totalPrice.toLocaleString("en-IN") %></strong> &middot; Payment Status: <strong class="<%= booking.paymentStatus === 'Paid' ? 'text-success' : 'text-warning' %>"><%= booking.paymentStatus %></strong></p>
+                                            </div>
+                                            <div class="col-md-3 text-md-end text-start">
+                                                <span class="badge <%= statusColor %> mb-2 d-block w-100 text-center py-2" style="font-size: 0.85rem;"><%= stayStatus %></span>
+                                                
+                                                <% if (booking.paymentStatus === "Pending" || booking.paymentStatus === "Failed") { %>
+                                                    <form action="/listings/<%= booking.listing._id %>/bookings/<%= booking._id %>/retry" method="POST" class="mt-2">
+                                                        <button class="btn btn-danger btn-sm w-100 fw-bold" style="border-radius: 20px;">
+                                                            <i class="fa-solid fa-credit-card me-1"></i>Pay Now
+                                                        </button>
+                                                    </form>
+                                                <% } %>
+
+                                                <% if (booking.bookingStatus === "Pending") { %>
+                                                    <form action="/listings/<%= booking.listing._id %>/bookings/<%= booking._id %>/cancel" method="POST" class="mt-2">
+                                                        <button class="btn btn-outline-danger btn-sm w-100" style="border-radius: 20px;">Cancel Request</button>
+                                                    </form>
+                                                <% } else if (booking.bookingStatus === "Confirmed") { %>
+                                                    <form action="/listings/<%= booking.listing._id %>/bookings/<%= booking._id %>/cancel" method="POST" class="mt-2">
+                                                        <button class="btn btn-outline-danger btn-sm w-100" style="border-radius: 20px;">Cancel Stay</button>
+                                                    </form>
+                                                <% } else if (booking.bookingStatus === "Completed") { %>
+                                                    <% if (!booking.reviewSubmitted) { %>
+                                                        <button type="button" class="btn btn-dark btn-sm w-100 mt-2" 
+                                                                style="border-radius: 20px;" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#reviewModal" 
+                                                                data-booking-id="<%= booking._id %>"
+                                                                data-listing-id="<%= booking.listing._id %>"
+                                                                data-listing-title="<%= booking.listing.title %>">
+                                                            Write Review
+                                                        </button>
+                                                    <% } else { %>
+                                                        <button type="button" class="btn btn-outline-dark btn-sm w-100 mt-2" 
+                                                                style="border-radius: 20px;" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#editReviewModal" 
+                                                                data-booking-id="<%= booking._id %>"
+                                                                data-listing-id="<%= booking.listing._id %>"
+                                                                data-listing-title="<%= booking.listing.title %>">
+                                                            View/Edit Review
+                                                        </button>
+                                                    <% } %>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="fa-solid fa-suitcase fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">You haven't booked any trips yet.</p>
+                            <a href="/listings" class="btn btn-danger mt-2 px-4 py-2" style="border-radius: 25px;">Explore Listings</a>
+                        </div>
+                    <% } %>
+                <% } %>
+
+                <!-- TAB 3: MY LISTINGS -->
+                <% if (tab === 'listings') { %>
+                    <h3 class="fw-bold mb-3">My Listings</h3>
+                    
+                    <!-- Host Statistics Row -->
+                    <div class="row g-2 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 border rounded-3 text-center bg-light">
+                                <h4 class="fw-bold text-danger mb-1"><%= data.totalListings %></h4>
+                                <span class="text-secondary small">Total Listings</span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 border rounded-3 text-center bg-light">
+                                <h4 class="fw-bold text-success mb-1"><%= data.totalBookings %></h4>
+                                <span class="text-secondary small">Total Bookings</span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 border rounded-3 text-center bg-light">
+                                <h4 class="fw-bold text-warning mb-1"><%= data.pendingBookings %></h4>
+                                <span class="text-secondary small">Pending Requests</span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 border rounded-3 text-center bg-light">
+                                <h4 class="fw-bold text-primary mb-1">&#8377;<%= data.revenue.toLocaleString("en-IN") %></h4>
+                                <span class="text-secondary small">Revenue Generated</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <% if (data.myListings && data.myListings.length > 0) { %>
+                        <div class="row row-cols-1 row-cols-md-2 g-3">
+                            <% for (let listing of data.myListings) { %>
+                                <div class="col">
+                                    <div class="card border rounded-3 h-100 shadow-sm overflow-hidden">
+                                        <img src="<%= listing.image.url %>" class="card-img-top" style="height: 150px; object-fit: cover;" alt="listing">
+                                        <div class="card-body p-3">
+                                            <h5 class="fw-bold text-truncate mb-1"><%= listing.title %></h5>
+                                            <p class="text-secondary small mb-2"><i class="fa-solid fa-location-dot me-1"></i><%= listing.location %>, <%= listing.country %></p>
+                                            <p class="fw-bold text-danger small mb-3">&#8377;<%= listing.price.toLocaleString("en-IN") %> / night</p>
+                                            
+                                            <div class="d-flex justify-content-between gap-2 mt-2">
+                                                <a href="/listings/<%= listing._id %>" class="btn btn-outline-dark btn-sm flex-fill" style="border-radius: 15px;">View</a>
+                                                <a href="/listings/<%= listing._id %>/edit" class="btn btn-outline-secondary btn-sm flex-fill" style="border-radius: 15px;">Edit</a>
+                                                <form action="/listings/<%= listing._id %>?_method=DELETE" method="POST" class="flex-fill">
+                                                    <button class="btn btn-outline-danger btn-sm w-100" style="border-radius: 15px;">Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="fa-solid fa-house-circle-xmark fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">You have no listings registered.</p>
+                            <a href="/listings/new" class="btn btn-danger mt-2 px-4 py-2" style="border-radius: 25px;">Become a Host</a>
+                        </div>
+                    <% } %>
+                <% } %>
+
+                <!-- TAB 4: BOOKING REQUESTS -->
+                <% if (tab === 'requests') { %>
+                    <h3 class="fw-bold mb-3">Booking Requests</h3>
+                    
+                    <!-- Metrics Row -->
+                    <div class="row g-2 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 border rounded-3 text-center bg-light">
+                                <h4 class="fw-bold text-danger mb-1"><%= data.totalBookings %></h4>
+                                <span class="text-secondary small">Total Requests</span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 border rounded-3 text-center bg-light">
+                                <h4 class="fw-bold text-warning mb-1"><%= data.pendingRequests %></h4>
+                                <span class="text-secondary small">Pending Actions</span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 border rounded-3 text-center bg-light">
+                                <h4 class="fw-bold text-primary mb-1"><%= data.occupancyRate %>%</h4>
+                                <span class="text-secondary small">Occupancy Rate</span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 border rounded-3 text-center bg-light">
+                                <h4 class="fw-bold text-success mb-1">&#8377;<%= data.revenue.toLocaleString("en-IN") %></h4>
+                                <span class="text-secondary small">Revenue</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <% if (data.requests && data.requests.length > 0) { %>
+                        <div class="row g-3">
+                            <% for (let req of data.requests) { %>
+                                <div class="col-12 mb-2">
+                                    <div class="card border rounded-3 p-3 shadow-sm">
+                                        <div class="row g-3 align-items-center">
+                                            <div class="col-md-2">
+                                                <img src="<%= req.listing.image.url %>" class="img-fluid rounded-3" style="max-height: 80px; width: 100%; object-fit: cover;" alt="property">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6 class="fw-bold mb-1"><%= req.listing.title %></h6>
+                                                <p class="text-secondary small mb-1">Guest: <strong><%= req.guest.username %></strong> &middot; Count: <strong><%= req.guestCount %></strong></p>
+                                                <p class="text-secondary small mb-0"><i class="fa-regular fa-calendar me-1"></i><%= new Date(req.checkInDate).toLocaleDateString() %> - <%= new Date(req.checkOutDate).toLocaleDateString() %></p>
+                                            </div>
+                                            <div class="col-md-4 text-md-end text-start">
+                                                <p class="fw-bold text-danger mb-2">&#8377;<%= req.totalPrice.toLocaleString("en-IN") %></p>
+                                                
+                                                <% if (req.bookingStatus === "Pending") { %>
+                                                    <div class="d-flex gap-2">
+                                                        <form action="/listings/<%= req.listing._id %>/bookings/<%= req._id %>/status" method="POST" class="flex-fill">
+                                                            <input type="hidden" name="status" value="Confirmed">
+                                                            <button class="btn btn-success btn-sm w-100" style="border-radius: 15px;">Accept</button>
+                                                        </form>
+                                                        <form action="/listings/<%= req.listing._id %>/bookings/<%= req._id %>/status" method="POST" class="flex-fill">
+                                                            <input type="hidden" name="status" value="Rejected">
+                                                            <button class="btn btn-outline-danger btn-sm w-100" style="border-radius: 15px;">Reject</button>
+                                                        </form>
+                                                    </div>
+                                                <% } else { %>
+                                                    <span class="badge bg-secondary py-2 px-3 rounded-pill"><%= req.bookingStatus %></span>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="fa-solid fa-envelope-open-text fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No booking requests received yet.</p>
+                        </div>
+                    <% } %>
+                <% } %>
+
+                <!-- TAB 5: REVIEWS RECEIVED -->
+                <% if (tab === 'reviews') { %>
+                    <h3 class="fw-bold mb-3">Reviews Received</h3>
+                    
+                    <!-- Stats panel -->
+                    <div class="row g-3 mb-4 align-items-center">
+                        <div class="col-md-4 text-center border-end">
+                            <h1 class="fw-bold text-danger mb-1"><%= data.averageRating %></h1>
+                            <div class="text-warning mb-2">
+                                <% for(let i=1; i<=5; i++) { %>
+                                    <i class="<%= i <= Math.round(data.averageRating) ? 'fa-solid' : 'fa-regular' %> fa-star"></i>
+                                <% } %>
+                            </div>
+                            <span class="text-secondary small">Average Guest Rating</span>
+                        </div>
+                        <div class="col-md-8 px-4">
+                            <% for (let score of [5, 4, 3, 2, 1]) { %>
+                                <% 
+                                    const count = data.ratingDistribution[score] || 0;
+                                    const percent = data.totalReviews > 0 ? Math.round((count / data.totalReviews) * 100) : 0;
+                                %>
+                                <div class="d-flex align-items-center mb-1">
+                                    <span class="text-secondary small me-2" style="width: 15px;"><%= score %></span>
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-danger" role="progressbar" style="width: <%= percent %>%" aria-valuenow="<%= percent %>" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="text-secondary small ms-2" style="width: 25px;"><%= percent %>%</span>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <% if (data.reviewsReceived && data.reviewsReceived.length > 0) { %>
+                        <div class="row g-3">
+                            <% for (let rev of data.reviewsReceived) { %>
+                                <div class="col-12">
+                                    <div class="card border rounded-3 p-3 shadow-sm">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <div>
+                                                <h6 class="fw-bold mb-0">@<%= rev.author.username %></h6>
+                                                <span class="text-secondary small">on listing: <strong><%= rev.listing.title %></strong></span>
+                                            </div>
+                                            <div class="text-warning small">
+                                                <% for(let i=1; i<=5; i++) { %>
+                                                    <i class="<%= i <= rev.rating ? 'fa-solid' : 'fa-regular' %> fa-star"></i>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                        <p class="card-text mb-1 text-dark small">"<%= rev.comment %>"</p>
+                                        <span class="text-secondary small"><i class="fa-regular fa-clock me-1"></i><%= new Date(rev.created_at).toLocaleDateString() %></span>
+                                    </div>
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="fa-regular fa-message fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No reviews received for your listings yet.</p>
+                        </div>
+                    <% } %>
+                <% } %>
+
+                <!-- TAB 6: PAYMENT HISTORY -->
+                <% if (tab === 'payments') { %>
+                    <h3 class="fw-bold mb-4">Payment History</h3>
+                    <% if (data.myPayments && data.myPayments.length > 0) { %>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Property Name</th>
+                                        <th>Booking ID</th>
+                                        <th>Amount Paid</th>
+                                        <th>Payment Date</th>
+                                        <th>Transaction ID</th>
+                                        <th>Status</th>
+                                        <th>Receipt</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% for (let payment of data.myPayments) { %>
+                                        <tr>
+                                            <td>
+                                                <strong><%= payment.booking && payment.booking.listing ? payment.booking.listing.title : 'N/A' %></strong>
+                                            </td>
+                                            <td><small class="text-secondary"><%= payment.booking ? payment.booking._id : 'N/A' %></small></td>
+                                            <td class="fw-bold text-danger">₹<%= payment.amount.toLocaleString("en-IN") %></td>
+                                            <td><%= new Date(payment.timestamp).toLocaleDateString() %></td>
+                                            <td><small class="text-secondary"><%= payment.razorpayPaymentId || 'N/A' %></small></td>
+                                            <td>
+                                                <span class="badge <%= payment.status === 'Paid' ? 'bg-success' : (payment.status === 'Failed' ? 'bg-danger' : 'bg-warning') %>">
+                                                    <%= payment.status %>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <% if (payment.status === 'Paid') { %>
+                                                    <a href="/listings/<%= payment.booking && payment.booking.listing ? payment.booking.listing._id : 'N/A' %>/bookings/<%= payment.booking ? payment.booking._id : 'N/A' %>/receipt" class="btn btn-sm btn-outline-danger" target="_blank" style="border-radius: 15px;">
+                                                        <i class="fa-solid fa-download me-1"></i>Receipt
+                                                    </a>
+                                                <% } else { %>
+                                                    -
+                                                <% } %>
+                                            </td>
+                                        </tr>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="fa-solid fa-receipt fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">You have no recorded payments.</p>
+                        </div>
+                    <% } %>
+                <% } %>
+
+                <!-- TAB 7: HOST DASHBOARD -->
+                <% if (tab === 'host-dashboard') { %>
+                    <h3 class="fw-bold mb-4">Host Dashboard</h3>
+                    
+                    <!-- Metrics Panel -->
+                    <div class="row g-3 mb-4 text-center">
+                        <div class="col-md-6 col-lg-3">
+                            <div class="p-3 border rounded-3 bg-light shadow-sm">
+                                <h3 class="fw-bold text-danger mb-1">₹<%= data.totalRevenue.toLocaleString("en-IN") %></h3>
+                                <span class="text-secondary small">Total Revenue</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <div class="p-3 border rounded-3 bg-light shadow-sm">
+                                <h3 class="fw-bold text-success mb-1">₹<%= data.monthlyRevenue.toLocaleString("en-IN") %></h3>
+                                <span class="text-secondary small">Monthly Revenue</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <div class="p-3 border rounded-3 bg-light shadow-sm">
+                                <h3 class="fw-bold text-primary mb-1"><%= data.successfulPaymentsCount %></h3>
+                                <span class="text-secondary small">Successful Payments</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <div class="p-3 border rounded-3 bg-light shadow-sm">
+                                <h3 class="fw-bold text-warning mb-1"><%= data.pendingPaymentsCount %></h3>
+                                <span class="text-secondary small">Pending Payments</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Revenue By Listing -->
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-house-user me-2 text-danger"></i>Revenue by Property</h5>
+                    <% if (data.revenueByListing && data.revenueByListing.length > 0) { %>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Property Title</th>
+                                        <th class="text-end" style="width: 200px;">Revenue Generated</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% for (let item of data.revenueByListing) { %>
+                                        <tr>
+                                            <td><strong><%= item.title %></strong></td>
+                                            <td class="text-end fw-bold text-danger">₹<%= item.revenue.toLocaleString("en-IN") %></td>
+                                        </tr>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    <% } else { %>
+                        <p class="text-secondary small">No properties have generated revenue yet.</p>
+                    <% } %>
+
+                    <!-- Recent Successful Payments list -->
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-clock-rotate-left me-2 text-danger"></i>Recent Successful Payments</h5>
+                    <% if (data.successfulPayments && data.successfulPayments.length > 0) { %>
+                        <div class="list-group">
+                            <% for (let p of data.successfulPayments) { %>
+                                <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap rounded-3 mb-2 border shadow-sm">
+                                    <div>
+                                        <h6 class="fw-bold mb-1"><%= p.booking && p.booking.listing ? p.booking.listing.title : 'N/A' %></h6>
+                                        <small class="text-secondary">Guest ID: <%= p.guest %> &middot; Date: <%= new Date(p.timestamp).toLocaleString() %></small>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold text-success">+₹<%= p.amount.toLocaleString("en-IN") %></div>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2 rounded-pill">Paid</span>
+                                    </div>
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } else { %>
+                        <p class="text-secondary small">No successful transaction records available.</p>
+                    <% } %>
+                <% } %>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: WRITE REVIEW MODAL -->
+    <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="reviewModalLabel">Write a Review</h5>
+                    <button type="button" class="btn-close" data-bs-close="modal" aria-label="Close"></button>
+                </div>
+                <form id="writeReviewForm" method="POST" novalidate class="needs-validation">
+                    <div class="modal-body px-4 py-3">
+                        <p class="text-secondary small">Share your experience at: <strong id="modal-listing-title" class="text-danger"></strong></p>
+                        <input type="hidden" name="review[bookingId]" id="modal-booking-id">
+                        
+                        <!-- Ratings -->
+                        <div class="row row-cols-2 g-2 mb-3">
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Overall Stay *</label>
+                                <select class="form-select form-select-sm" name="review[rating]" required>
+                                    <option value="5" selected>5 Stars (Amazing)</option>
+                                    <option value="4">4 Stars (Good)</option>
+                                    <option value="3">3 Stars (Average)</option>
+                                    <option value="2">2 Stars (Bad)</option>
+                                    <option value="1">1 Star (Terrible)</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Cleanliness</label>
+                                <select class="form-select form-select-sm" name="review[cleanlinessRating]">
+                                    <option value="5" selected>5 / 5</option>
+                                    <option value="4">4 / 5</option>
+                                    <option value="3">3 / 5</option>
+                                    <option value="2">2 / 5</option>
+                                    <option value="1">1 / 5</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Accuracy</label>
+                                <select class="form-select form-select-sm" name="review[accuracyRating]">
+                                    <option value="5" selected>5 / 5</option>
+                                    <option value="4">4 / 5</option>
+                                    <option value="3">3 / 5</option>
+                                    <option value="2">2 / 5</option>
+                                    <option value="1">1 / 5</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Communication</label>
+                                <select class="form-select form-select-sm" name="review[communicationRating]">
+                                    <option value="5" selected>5 / 5</option>
+                                    <option value="4">4 / 5</option>
+                                    <option value="3">3 / 5</option>
+                                    <option value="2">2 / 5</option>
+                                    <option value="1">1 / 5</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Location</label>
+                                <select class="form-select form-select-sm" name="review[locationRating]">
+                                    <option value="5" selected>5 / 5</option>
+                                    <option value="4">4 / 5</option>
+                                    <option value="3">3 / 5</option>
+                                    <option value="2">2 / 5</option>
+                                    <option value="1">1 / 5</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Value for Money</label>
+                                <select class="form-select form-select-sm" name="review[valueRating]">
+                                    <option value="5" selected>5 / 5</option>
+                                    <option value="4">4 / 5</option>
+                                    <option value="3">3 / 5</option>
+                                    <option value="2">2 / 5</option>
+                                    <option value="1">1 / 5</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Review Text -->
+                        <div class="mb-3">
+                            <label for="reviewComment" class="form-label small fw-semibold">Review Message (Min 20 characters) *</label>
+                            <textarea class="form-control" name="review[comment]" id="reviewComment" rows="4" minlength="20" maxlength="1000" placeholder="Describe cleanliness, host communication, check-in accuracy..." required></textarea>
+                            <div class="invalid-feedback">Review text must be between 20 and 1000 characters.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-close="modal" style="border-radius: 15px;">Cancel</button>
+                        <button type="submit" class="btn btn-danger btn-sm px-4" style="border-radius: 15px;">Submit Review</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: VIEW/EDIT REVIEW MODAL -->
+    <!-- For simplicity, we can redirect or load review details here via JS if requested -->
+    <!-- Let's implement full dynamic JS population for these modals! -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const reviewModal = document.getElementById('reviewModal');
+            if (reviewModal) {
+                reviewModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const bookingId = button.getAttribute('data-booking-id');
+                    const listingId = button.getAttribute('data-listing-id');
+                    const listingTitle = button.getAttribute('data-listing-title');
+                    
+                    const form = document.getElementById('writeReviewForm');
+                    form.action = `/listings/${listingId}/reviews`;
+                    
+                    document.getElementById('modal-booking-id').value = bookingId;
+                    document.getElementById('modal-listing-title').textContent = listingTitle;
+                });
+            }
+        });
+    </script>
+</body>

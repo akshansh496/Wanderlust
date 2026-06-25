@@ -1,0 +1,349 @@
+<% layout("/layout/boilerplate") %>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+<body>
+    <div class="container mt-4">
+        <!-- Title and header -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <h3 class="fw-bold mb-1"><%= listing.title %></h3>
+                <div class="d-flex align-items-center flex-wrap gap-2 text-secondary small">
+                    <% 
+                        let sumRating = 0;
+                        let avgRating = 0;
+                        if (listing.reviews.length > 0) {
+                            sumRating = listing.reviews.reduce((acc, r) => acc + r.rating, 0);
+                            avgRating = (sumRating / listing.reviews.length).toFixed(1);
+                        }
+                    %>
+                    <span><i class="fa-solid fa-star text-warning me-1"></i><%= avgRating > 0 ? avgRating : "No ratings yet" %></span>
+                    <span>&middot;</span>
+                    <span class="text-decoration-underline fw-bold"><%= listing.reviews.length %> review<%= listing.reviews.length === 1 ? '' : 's' %></span>
+                    <span>&middot;</span>
+                    <span class="text-decoration-underline"><%= listing.location %>, <%= listing.country %></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left Column: Details, Reviews, Map -->
+            <div class="col-lg-7 col-md-12">
+                <!-- Listing Image & Info Card -->
+                <div class="card border-0 mb-4">
+                    <img src="<%= listing.image.url %>" class="card-img-top rounded-4 shadow-sm" alt="listing_img" style="height: 380px; object-fit: cover;">
+                    <div class="card-body px-0 py-3">
+                        <h4 class="fw-bold mb-1">Entire place hosted by <%= listing.owner.username %></h4>
+                        <div class="d-flex gap-2 my-2">
+                            <span class="badge bg-secondary"><%= listing.category %></span>
+                        </div>
+                        <p class="text-muted"><%= listing.description %></p>
+                    </div>
+                </div>
+                <hr>
+
+                <!-- What this place offers -->
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>What this place offers</h5>
+                    <% if (listing.features && listing.features.length > 0) { %>
+                        <div class="row row-cols-2 g-3">
+                            <% for (let featName of listing.features) { %>
+                                <% const matchedFeat = featuresList.find(f => f.name === featName); %>
+                                <div class="col d-flex align-items-center">
+                                    <i class="<%= matchedFeat ? matchedFeat.icon : 'fa-solid fa-circle-check' %> fs-5 text-dark me-2"></i>
+                                    <span><%= featName %></span>
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } else { %>
+                        <p class="text-muted small">No specific features listed by the host.</p>
+                    <% } %>
+                </div>
+                <hr>
+
+                <!-- Map Section -->
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-location-dot me-2"></i>Where you'll be</h5>
+                    <% if(listing.lat && listing.lng && (listing.lat !== 0 || listing.lng !== 0)) { %>
+                        <div id="map" style="height: 350px; border-radius: 12px; border: 1px solid #ced4da;" class="mb-3 shadow-sm"></div>
+                    <% } else { %>
+                        <div class="alert alert-warning small py-2 mb-0">Exact location coordinates are not set for this listing.</div>
+                    <% } %>
+                </div>
+                <hr>
+
+                <!-- Reviews Section -->
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="fa-solid fa-star text-warning me-1"></i>
+                        <%= avgRating > 0 ? avgRating : "No ratings yet" %> &middot; <%= listing.reviews.length %> review<%= listing.reviews.length === 1 ? '' : 's' %>
+                    </h5>
+                    
+                    <!-- Write Review conditional displays -->
+                    <% if (currUser) { %>
+                        <% if (bookingStatusForUser === "eligible") { %>
+                            <div class="card border rounded-3 p-3 mb-4 bg-light shadow-sm">
+                                <h6 class="fw-bold mb-2">Write a Review</h6>
+                                <form action="/listings/<%= listing._id %>/reviews" method="POST" novalidate class="needs-validation">
+                                    <input type="hidden" name="review[bookingId]" value="<%= eligibleBookingId %>">
+                                    <div class="row row-cols-2 g-2 mb-3">
+                                        <div class="col">
+                                            <label class="form-label small fw-semibold">Overall Stay *</label>
+                                            <select class="form-select form-select-sm" name="review[rating]" required>
+                                                <option value="5" selected>5 Stars (Amazing)</option>
+                                                <option value="4">4 Stars (Good)</option>
+                                                <option value="3">3 Stars (Average)</option>
+                                                <option value="2">2 Stars (Bad)</option>
+                                                <option value="1">1 Star (Terrible)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col">
+                                            <label class="form-label small fw-semibold">Cleanliness</label>
+                                            <select class="form-select form-select-sm" name="review[cleanlinessRating]">
+                                                <option value="5" selected>5 / 5</option>
+                                                <option value="4">4 / 5</option>
+                                                <option value="3">3 / 5</option>
+                                                <option value="2">2 / 5</option>
+                                                <option value="1">1 / 5</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="reviewComment" class="form-label small fw-semibold">Review Text (Min 20 characters) *</label>
+                                        <textarea class="form-control" name="review[comment]" id="reviewComment" rows="3" minlength="20" maxlength="1000" placeholder="Share cleanliness, check-in accuracy details..." required></textarea>
+                                        <div class="invalid-feedback">Review text must be between 20 and 1000 characters.</div>
+                                    </div>
+                                    <button class="btn btn-dark btn-sm px-4" style="border-radius: 20px;">Submit Review</button>
+                                </form>
+                            </div>
+                        <% } else if (bookingStatusForUser === "pending_stay") { %>
+                            <div class="alert alert-info small py-2 mb-4">
+                                <i class="fa-solid fa-circle-info me-2"></i>You can review this property after your stay is completed.
+                            </div>
+                        <% } else if (bookingStatusForUser === "reviewed") { %>
+                            <div class="alert alert-success small py-2 mb-4">
+                                <i class="fa-solid fa-circle-check me-2"></i>Thank you for reviewing your stay at this property!
+                            </div>
+                        <% } %>
+                    <% } %>
+
+                    <!-- Reviews List -->
+                    <% if (listing.reviews.length > 0) { %>
+                        <div class="row row-cols-1 row-cols-md-2 g-3">
+                            <% for (let review of listing.reviews) { %>
+                                <div class="col">
+                                    <div class="card border rounded-3 p-3 shadow-sm h-100">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div>
+                                                <h6 class="fw-bold mb-0">@<%= review.author.username %></h6>
+                                                <span class="text-secondary small"><%= new Date(review.created_at).toLocaleDateString() %></span>
+                                            </div>
+                                            <div class="text-warning small">
+                                                <% for(let i=1; i<=5; i++) { %>
+                                                    <i class="<%= i <= review.rating ? 'fa-solid' : 'fa-regular' ? 'fa-regular' : '' %> fa-star"></i>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                        <p class="card-text text-muted small mb-2">"<%= review.comment %>"</p>
+                                        <div class="d-flex align-items-center">
+                                            <% if (review.verifiedStay) { %>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size: 0.75rem;">
+                                                    <i class="fa-solid fa-circle-check me-1"></i>Verified Stay
+                                                </span>
+                                            <% } %>
+                                            
+                                            <% if(currUser && review.author._id.equals(currUser._id)) { %>
+                                                <form method="POST" action="/listings/<%= listing._id %>/reviews/<%= review._id %>?_method=DELETE" class="ms-auto">
+                                                    <button class="btn btn-sm text-danger border-0 p-0"><i class="fa-solid fa-trash-can"></i></button>
+                                                </form>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } else { %>
+                        <p class="text-secondary small">No reviews for this property yet.</p>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Right Column: Booking Checkout Widget -->
+            <div class="col-lg-5 col-md-12">
+                <div class="card shadow border rounded-4 p-4 sticky-top" style="top: 80px; z-index: 10;">
+                    <h4 class="fw-bold text-dark">&#8377;<%= listing.price.toLocaleString("en-IN") %> <span class="text-secondary small fw-normal">/ night</span></h4>
+                    <hr>
+                    
+                    <% if(!currUser) { %>
+                        <div class="alert alert-warning small py-2 mb-3">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>You must be logged in to book this property.
+                        </div>
+                        <a href="/login" class="btn btn-danger w-100 py-2 fw-semibold" style="border-radius: 20px;">Login to Book</a>
+                    <% } else if (listing.owner._id.equals(currUser._id)) { %>
+                        <div class="alert alert-info small py-2 mb-0">
+                            <i class="fa-solid fa-circle-info me-1"></i>This is your property listing. You can manage bookings in the <a href="/profile?tab=requests" class="fw-bold text-decoration-underline text-info">Host Panel</a>.
+                        </div>
+                    <% } else { %>
+                        <form action="/listings/<%= listing._id %>/bookings" method="POST" class="needs-validation" novalidate>
+                            <!-- Dates selection -->
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label for="checkInDate" class="form-label small fw-bold">Check-in</label>
+                                    <input type="date" class="form-control" name="booking[checkInDate]" id="checkInDate" required>
+                                </div>
+                                <div class="col-6">
+                                    <label for="checkOutDate" class="form-label small fw-bold">Check-out</label>
+                                    <input type="date" class="form-control" name="booking[checkOutDate]" id="checkOutDate" required>
+                                </div>
+                            </div>
+                            
+                            <!-- Guest Count -->
+                            <div class="mb-3">
+                                <label for="guestCount" class="form-label small fw-bold">Guests</label>
+                                <select class="form-select" name="booking[guestCount]" id="guestCount" required>
+                                    <option value="1" selected>1 Guest</option>
+                                    <option value="2">2 Guests</option>
+                                    <option value="3">3 Guests</option>
+                                    <option value="4">4 Guests</option>
+                                    <option value="5">5+ Guests</option>
+                                </select>
+                            </div>
+
+                            <!-- AJAX Availability Display Indicator -->
+                            <div id="availability-badge" class="alert small py-2 mb-3 text-center" style="display: none;"></div>
+
+                            <!-- Pricing breakdown summary -->
+                            <div id="pricing-summary" style="display: none;">
+                                <hr>
+                                <div class="d-flex justify-content-between mb-2 small">
+                                    <span id="price-nights-label">₹<%= listing.price %> x 0 nights</span>
+                                    <span id="price-nights-total">₹0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2 small">
+                                    <span>Platform Fee (5%)</span>
+                                    <span id="price-platform-fee">₹0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2 small">
+                                    <span>GST (18% on Base Price)</span>
+                                    <span id="price-gst">₹0</span>
+                                </div>
+                                <hr class="my-2">
+                                <div class="d-flex justify-content-between fw-bold mb-3 fs-5">
+                                    <span>Total Price</span>
+                                    <span id="price-total">₹0</span>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-danger w-100 py-2 fw-semibold" id="book-btn" style="border-radius: 25px;">Book Now</button>
+                        </form>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet Map JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // 1. Initialise map
+            const lat = <%= listing.lat || 0 %>;
+            const lng = <%= listing.lng || 0 %>;
+            
+            if (lat !== 0 && lng !== 0) {
+                const map = L.map('map').setView([lat, lng], 13);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                const marker = L.marker([lat, lng]).addTo(map);
+                marker.bindPopup("<b><%= listing.title %></b><br><%= listing.location %>").openPopup();
+                
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 200);
+            }
+
+            // 2. Booking availability & pricing calculation script
+            const checkInInput = document.getElementById("checkInDate");
+            const checkOutInput = document.getElementById("checkOutDate");
+            const badge = document.getElementById("availability-badge");
+            const bookBtn = document.getElementById("book-btn");
+            const pricingSummary = document.getElementById("pricing-summary");
+            
+            const pricePerNight = <%= listing.price %>;
+
+            // Set checkin minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            if (checkInInput) checkInInput.min = today;
+
+            function checkAvailability() {
+                const checkIn = checkInInput.value;
+                const checkOut = checkOutInput.value;
+                
+                if (!checkIn || !checkOut) return;
+
+                checkOutInput.min = checkIn;
+
+                if (new Date(checkOut) <= new Date(checkIn)) {
+                    showBadge("danger", "Check-out must be after check-in date.");
+                    bookBtn.disabled = true;
+                    pricingSummary.style.display = "none";
+                    return;
+                }
+
+                // Query AJAX availability endpoint
+                fetch(`/listings/<%= listing._id %>/bookings/check-availability?checkInDate=${checkIn}&checkOutDate=${checkOut}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === "available") {
+                            showBadge("success", "✓ " + data.message);
+                            bookBtn.disabled = false;
+                            calculateEstimate(checkIn, checkOut);
+                        } else if (data.status === "pending") {
+                            showBadge("warning text-dark", "⚠ " + data.message);
+                            bookBtn.disabled = false;
+                            calculateEstimate(checkIn, checkOut);
+                        } else {
+                            showBadge("danger", "✗ " + data.message);
+                            bookBtn.disabled = true;
+                            pricingSummary.style.display = "none";
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Availability check error:", err);
+                    });
+            }
+
+            function showBadge(type, text) {
+                badge.className = `alert alert-${type} small py-2 mb-3 text-center fw-semibold`;
+                badge.textContent = text;
+                badge.style.display = "block";
+            }
+
+            function calculateEstimate(checkIn, checkOut) {
+                const nights = Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24));
+                if (nights <= 0) return;
+
+                const basePrice = pricePerNight * nights;
+                const platformFee = Math.round(basePrice * 0.05 * 100) / 100;
+                const gst = Math.round(basePrice * 0.18 * 100) / 100;
+                const total = Math.round((basePrice + platformFee + gst) * 100) / 100;
+
+                document.getElementById("price-nights-label").textContent = `₹${pricePerNight.toLocaleString("en-IN")} x ${nights} night${nights > 1 ? 's' : ''}`;
+                document.getElementById("price-nights-total").textContent = `₹${basePrice.toLocaleString("en-IN")}`;
+                document.getElementById("price-platform-fee").textContent = `₹${platformFee.toLocaleString("en-IN")}`;
+                document.getElementById("price-gst").textContent = `₹${gst.toLocaleString("en-IN")}`;
+                document.getElementById("price-total").textContent = `₹${total.toLocaleString("en-IN")}`;
+                
+                pricingSummary.style.display = "block";
+            }
+
+            if (checkInInput && checkOutInput) {
+                checkInInput.addEventListener("change", checkAvailability);
+                checkOutInput.addEventListener("change", checkAvailability);
+            }
+        });
+    </script>
+</body>
