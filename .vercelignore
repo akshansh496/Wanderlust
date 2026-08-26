@@ -1,0 +1,8 @@
+node_modules
+.env
+.env.*
+mongodb_data
+uploads
+.git
+.DS_Store
+__MACOSX

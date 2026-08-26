@@ -280,11 +280,14 @@ module.exports.sendPasswordResetLink = async (req, res) => {
         user.resetPasswordExpires = expires;
         await user.save();
 
+        const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+        const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
         // 1. Log to console for easy local developer testing
         console.log("\n========================================================");
         console.log("PASSWORD RESET REQUEST RECEIVED:");
         console.log(`To: ${user.email}`);
-        console.log(`Reset Link: http://localhost:8080/reset-password?token=${token}`);
+        console.log(`Reset Link: ${resetUrl}`);
         console.log("========================================================\n");
 
         // 2. Try sending mail using nodemailer if environment variables are set
@@ -297,8 +300,6 @@ module.exports.sendPasswordResetLink = async (req, res) => {
                         pass: process.env.EMAIL_PASS
                     }
                 });
-
-                const resetUrl = `http://localhost:8080/reset-password?token=${token}`;
                 const mailOptions = {
                     to: user.email,
                     from: process.env.EMAIL_USER,

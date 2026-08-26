@@ -28,7 +28,7 @@
                         <i class="fa-solid fa-chart-line me-2"></i>Host Dashboard
                     </a>
                     <a href="/profile?tab=requests" class="list-group-item list-group-item-action border-0 py-2 rounded-2 <%= tab === 'requests' ? 'bg-danger text-white fw-bold' : '' %>">
-                        <i class="fa-solid fa-envelope-open-text me-2"></i>Booking Requests
+                        <i class="fa-solid fa-envelope-open-text me-2"></i>Guest Bookings
                     </a>
                     <a href="/profile?tab=reviews" class="list-group-item list-group-item-action border-0 py-2 rounded-2 <%= tab === 'reviews' ? 'bg-danger text-white fw-bold' : '' %>">
                         <i class="fa-regular fa-star me-2"></i>Reviews Received
@@ -213,34 +213,28 @@
                     <% } %>
                 <% } %>
 
-                <!-- TAB 4: BOOKING REQUESTS -->
+                <!-- TAB 4: GUEST BOOKINGS -->
                 <% if (tab === 'requests') { %>
-                    <h3 class="fw-bold mb-3">Booking Requests</h3>
+                    <h3 class="fw-bold mb-3">Guest Bookings</h3>
                     
                     <!-- Metrics Row -->
-                    <div class="row g-2 mb-4">
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 border rounded-3 text-center bg-light">
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-md-4">
+                            <div class="p-3 border rounded-3 text-center bg-light shadow-sm">
                                 <h4 class="fw-bold text-danger mb-1"><%= data.totalBookings %></h4>
-                                <span class="text-secondary small">Total Requests</span>
+                                <span class="text-secondary small">Total Bookings</span>
                             </div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 border rounded-3 text-center bg-light">
-                                <h4 class="fw-bold text-warning mb-1"><%= data.pendingRequests %></h4>
-                                <span class="text-secondary small">Pending Actions</span>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 border rounded-3 text-center bg-light">
+                        <div class="col-12 col-md-4">
+                            <div class="p-3 border rounded-3 text-center bg-light shadow-sm">
                                 <h4 class="fw-bold text-primary mb-1"><%= data.occupancyRate %>%</h4>
                                 <span class="text-secondary small">Occupancy Rate</span>
                             </div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 border rounded-3 text-center bg-light">
+                        <div class="col-12 col-md-4">
+                            <div class="p-3 border rounded-3 text-center bg-light shadow-sm">
                                 <h4 class="fw-bold text-success mb-1">&#8377;<%= data.revenue.toLocaleString("en-IN") %></h4>
-                                <span class="text-secondary small">Revenue</span>
+                                <span class="text-secondary small">Revenue Generated</span>
                             </div>
                         </div>
                     </div>
