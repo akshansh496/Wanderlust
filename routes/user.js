@@ -3,7 +3,7 @@ const router=express.Router({mergeParams:true});
 
 const wrapAsync = require("../utils/wrapAsync");
 const passport = require("passport");
-const { saveredirectUrl, isLoggedIn } = require("../middleware.js");
+const { saveredirectUrl, isLoggedIn } = require("../middlewares.js");
 const userController=require("../controllers/user.js");
 const multer = require("multer");
 const { storage } = require("../cloudConfig.js");

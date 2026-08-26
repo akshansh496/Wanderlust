@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router({ mergeParams: true });
 const wrapAsync = require("../utils/wrapAsync.js");
-const { isLoggedIn } = require("../middleware.js");
+const { isLoggedIn } = require("../middlewares.js");
 const bookingController = require("../controllers/booking.js");
 
 // Route to create a new booking
