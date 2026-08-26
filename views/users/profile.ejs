@@ -114,23 +114,10 @@
                                             <div class="col-md-3 text-md-end text-start">
                                                 <span class="badge <%= statusColor %> mb-2 d-block w-100 text-center py-2" style="font-size: 0.85rem;"><%= stayStatus %></span>
                                                 
-                                                <% if (booking.paymentStatus === "Pending" || booking.paymentStatus === "Failed") { %>
-                                                    <form action="/listings/<%= booking.listing._id %>/bookings/<%= booking._id %>/retry" method="POST" class="mt-2">
-                                                        <button class="btn btn-danger btn-sm w-100 fw-bold" style="border-radius: 20px;">
-                                                            <i class="fa-solid fa-credit-card me-1"></i>Pay Now
-                                                        </button>
-                                                    </form>
-                                                <% } %>
+                                                <%# Pay Later feature removed to prevent delayed payments %>
 
-                                                <% if (booking.bookingStatus === "Pending") { %>
-                                                    <form action="/listings/<%= booking.listing._id %>/bookings/<%= booking._id %>/cancel" method="POST" class="mt-2">
-                                                        <button class="btn btn-outline-danger btn-sm w-100" style="border-radius: 20px;">Cancel Request</button>
-                                                    </form>
-                                                <% } else if (booking.bookingStatus === "Confirmed") { %>
-                                                    <form action="/listings/<%= booking.listing._id %>/bookings/<%= booking._id %>/cancel" method="POST" class="mt-2">
-                                                        <button class="btn btn-outline-danger btn-sm w-100" style="border-radius: 20px;">Cancel Stay</button>
-                                                    </form>
-                                                <% } else if (booking.bookingStatus === "Completed") { %>
+                                                <%# Booking cancellation feature removed to prevent refund complications %>
+                                                <% if (booking.bookingStatus === "Completed") { %>
                                                     <% if (!booking.reviewSubmitted) { %>
                                                         <button type="button" class="btn btn-dark btn-sm w-100 mt-2" 
                                                                 style="border-radius: 20px;" 
@@ -173,27 +160,21 @@
                     <h3 class="fw-bold mb-3">My Listings</h3>
                     
                     <!-- Host Statistics Row -->
-                    <div class="row g-2 mb-4">
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 border rounded-3 text-center bg-light">
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-md-4">
+                            <div class="p-3 border rounded-3 text-center bg-light shadow-sm">
                                 <h4 class="fw-bold text-danger mb-1"><%= data.totalListings %></h4>
                                 <span class="text-secondary small">Total Listings</span>
                             </div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 border rounded-3 text-center bg-light">
+                        <div class="col-12 col-md-4">
+                            <div class="p-3 border rounded-3 text-center bg-light shadow-sm">
                                 <h4 class="fw-bold text-success mb-1"><%= data.totalBookings %></h4>
                                 <span class="text-secondary small">Total Bookings</span>
                             </div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 border rounded-3 text-center bg-light">
-                                <h4 class="fw-bold text-warning mb-1"><%= data.pendingBookings %></h4>
-                                <span class="text-secondary small">Pending Requests</span>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="p-3 border rounded-3 text-center bg-light">
+                        <div class="col-12 col-md-4">
+                            <div class="p-3 border rounded-3 text-center bg-light shadow-sm">
                                 <h4 class="fw-bold text-primary mb-1">&#8377;<%= data.revenue.toLocaleString("en-IN") %></h4>
                                 <span class="text-secondary small">Revenue Generated</span>
                             </div>
@@ -281,20 +262,7 @@
                                             <div class="col-md-4 text-md-end text-start">
                                                 <p class="fw-bold text-danger mb-2">&#8377;<%= req.totalPrice.toLocaleString("en-IN") %></p>
                                                 
-                                                <% if (req.bookingStatus === "Pending") { %>
-                                                    <div class="d-flex gap-2">
-                                                        <form action="/listings/<%= req.listing._id %>/bookings/<%= req._id %>/status" method="POST" class="flex-fill">
-                                                            <input type="hidden" name="status" value="Confirmed">
-                                                            <button class="btn btn-success btn-sm w-100" style="border-radius: 15px;">Accept</button>
-                                                        </form>
-                                                        <form action="/listings/<%= req.listing._id %>/bookings/<%= req._id %>/status" method="POST" class="flex-fill">
-                                                            <input type="hidden" name="status" value="Rejected">
-                                                            <button class="btn btn-outline-danger btn-sm w-100" style="border-radius: 15px;">Reject</button>
-                                                        </form>
-                                                    </div>
-                                                <% } else { %>
                                                     <span class="badge bg-secondary py-2 px-3 rounded-pill"><%= req.bookingStatus %></span>
-                                                <% } %>
                                             </div>
                                         </div>
                                     </div>

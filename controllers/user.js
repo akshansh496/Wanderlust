@@ -91,22 +91,19 @@ module.exports.renderProfileDashboard = async (req, res) => {
 
     if (tab === "listings") {
         const myListings = await Listing.find({ owner: req.user._id });
-        const hostBookings = await Booking.find({ host: req.user._id });
+        const hostBookings = await Booking.find({ 
+            host: req.user._id,
+            bookingStatus: { $in: ["Confirmed", "Completed"] }
+        });
         
         const totalListings = myListings.length;
         const totalBookings = hostBookings.length;
-        const pendingBookings = hostBookings.filter(b => b.bookingStatus === "Pending").length;
-        const confirmedBookings = hostBookings.filter(b => b.bookingStatus === "Confirmed").length;
-        const revenue = hostBookings
-            .filter(b => ["Confirmed", "Completed"].includes(b.bookingStatus))
-            .reduce((sum, b) => sum + b.totalPrice, 0);
+        const revenue = hostBookings.reduce((sum, b) => sum + b.totalPrice, 0);
 
         data = {
             myListings,
             totalListings,
             totalBookings,
-            pendingBookings,
-            confirmedBookings,
             revenue
         };
     } else if (tab === "bookings") {
@@ -119,17 +116,16 @@ module.exports.renderProfileDashboard = async (req, res) => {
             myBookings
         };
     } else if (tab === "requests") {
-        const requests = await Booking.find({ host: req.user._id })
+        const requests = await Booking.find({ 
+            host: req.user._id,
+            bookingStatus: { $in: ["Confirmed", "Completed"] }
+        })
             .populate("listing")
             .populate("guest")
             .sort({ createdAt: -1 });
 
         const totalBookings = requests.length;
-        const pendingRequests = requests.filter(r => r.bookingStatus === "Pending").length;
-        const confirmedBookings = requests.filter(r => r.bookingStatus === "Confirmed").length;
-        const revenue = requests
-            .filter(r => ["Confirmed", "Completed"].includes(r.bookingStatus))
-            .reduce((sum, r) => sum + r.totalPrice, 0);
+        const revenue = requests.reduce((sum, r) => sum + r.totalPrice, 0);
         
         const myListings = await Listing.find({ owner: req.user._id });
         const listingIds = myListings.map(l => l._id);
@@ -146,8 +142,6 @@ module.exports.renderProfileDashboard = async (req, res) => {
         data = {
             requests,
             totalBookings,
-            pendingRequests,
-            confirmedBookings,
             revenue,
             occupancyRate
         };

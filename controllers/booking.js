@@ -228,6 +228,49 @@ module.exports.verifyPayment = async (req, res) => {
     const payment = await Payment.findOne({ booking: bookingId });
 
     if (isValid) {
+        // Double-check overlaps with Confirmed or Completed stays
+        const overlapping = await Booking.findOne({
+            _id: { $ne: bookingId },
+            listing: booking.listing,
+            bookingStatus: { $in: ["Confirmed", "Completed"] },
+            $or: [
+                {
+                    checkInDate: { $lt: booking.checkOutDate },
+                    checkOutDate: { $gt: booking.checkInDate }
+                }
+            ]
+        });
+
+        if (overlapping) {
+            booking.bookingStatus = "Rejected";
+            booking.paymentStatus = "Failed";
+            await booking.save();
+
+            if (payment) {
+                payment.status = "Failed";
+                await payment.save();
+            }
+
+            req.flash("error", "Payment failed: This property was already confirmed for these dates by another guest.");
+            return res.redirect(`/listings/${id}`);
+        }
+
+        // Auto-reject other overlapping pending requests
+        await Booking.updateMany(
+            {
+                _id: { $ne: bookingId },
+                listing: booking.listing,
+                bookingStatus: "Pending",
+                $or: [
+                    {
+                        checkInDate: { $lt: booking.checkOutDate },
+                        checkOutDate: { $gt: booking.checkInDate }
+                    }
+                ]
+            },
+            { bookingStatus: "Rejected" }
+        );
+
         booking.bookingStatus = "Confirmed";
         booking.paymentStatus = "Paid";
         booking.razorpayPaymentId = razorpay_payment_id || "pay_placeholder_" + Date.now();
@@ -262,134 +305,19 @@ module.exports.verifyPayment = async (req, res) => {
 
 // 5. Retry Payment
 module.exports.retryPayment = async (req, res) => {
-    const { id, bookingId } = req.params;
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-        req.flash("error", "Booking not found.");
-        return res.redirect("/profile?tab=bookings");
-    }
-
-    try {
-        const orderOptions = {
-            amount: Math.round(booking.totalPrice * 100),
-            currency: "INR",
-            receipt: booking._id.toString()
-        };
-        const order = await razorpay.orders.create(orderOptions);
-        
-        booking.razorpayOrderId = order.id;
-        booking.paymentStatus = "Pending";
-        booking.bookingStatus = "Pending";
-        await booking.save();
-
-        await Payment.findOneAndUpdate(
-            { booking: bookingId },
-            { razorpayOrderId: order.id, status: "Pending" },
-            { upsert: true }
-        );
-    } catch (err) {
-        console.error("Razorpay retry order creation failed:", err);
-        const orderId = "order_offline_" + Math.random().toString(36).substr(2, 9);
-        booking.razorpayOrderId = orderId;
-        booking.paymentStatus = "Pending";
-        booking.bookingStatus = "Pending";
-        await booking.save();
-
-        await Payment.findOneAndUpdate(
-            { booking: bookingId },
-            { razorpayOrderId: orderId, status: "Pending" },
-            { upsert: true }
-        );
-    }
-
-    res.redirect(`/listings/${id}/bookings/${bookingId}/checkout`);
+    req.flash("error", "Payment retries are not permitted. Please book the listing again.");
+    res.redirect("/profile?tab=bookings");
 };
 
-// 6. Accept or reject booking (Host action)
+// 6. Accept or reject booking (Disabled: auto-confirmed on payment)
 module.exports.updateBookingStatus = async (req, res) => {
-    let { bookingId } = req.params;
-    let { status } = req.body; // "Confirmed" or "Rejected"
-
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-        req.flash("error", "Booking not found.");
-        return res.redirect("/profile?tab=requests");
-    }
-
-    // Verify user is host
-    if (!booking.host.equals(req.user._id)) {
-        req.flash("error", "Unauthorized action.");
-        return res.redirect("/listings");
-    }
-
-    if (status === "Confirmed") {
-        // Double-check overlap
-        const overlapping = await Booking.findOne({
-            _id: { $ne: bookingId },
-            listing: booking.listing,
-            bookingStatus: { $in: ["Confirmed", "Completed"] },
-            $or: [
-                {
-                    checkInDate: { $lt: booking.checkOutDate },
-                    checkOutDate: { $gt: booking.checkInDate }
-                }
-            ]
-        });
-
-        if (overlapping) {
-            req.flash("error", "Cannot approve request. Overlaps with an already confirmed booking.");
-            return res.redirect("/profile?tab=requests");
-        }
-
-        // Auto-reject other overlapping requests
-        await Booking.updateMany(
-            {
-                _id: { $ne: bookingId },
-                listing: booking.listing,
-                bookingStatus: "Pending",
-                $or: [
-                    {
-                        checkInDate: { $lt: booking.checkOutDate },
-                        checkOutDate: { $gt: booking.checkInDate }
-                    }
-                ]
-            },
-            { bookingStatus: "Rejected" }
-        );
-    }
-
-    booking.bookingStatus = status;
-    await booking.save();
-    
-    req.flash("success", `Booking request ${status.toLowerCase()} successfully!`);
+    req.flash("error", "Manual host approval is not permitted. Bookings are automatically confirmed on payment.");
     res.redirect("/profile?tab=requests");
 };
 
-// 7. Cancel booking (Guest action)
+// 7. Cancel booking (Disabled to prevent refunds)
 module.exports.cancelBooking = async (req, res) => {
-    let { bookingId } = req.params;
-
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-        req.flash("error", "Booking not found.");
-        return res.redirect("/profile?tab=bookings");
-    }
-
-    // Verify user is guest
-    if (!booking.guest.equals(req.user._id)) {
-        req.flash("error", "Unauthorized action.");
-        return res.redirect("/listings");
-    }
-
-    if (booking.bookingStatus === "Cancelled" || booking.bookingStatus === "Rejected" || booking.bookingStatus === "Completed") {
-        req.flash("error", "This booking cannot be cancelled.");
-        return res.redirect("/profile?tab=bookings");
-    }
-
-    booking.bookingStatus = "Cancelled";
-    await booking.save();
-
-    req.flash("success", "Booking cancelled successfully.");
+    req.flash("error", "Booking cancellation is not permitted.");
     res.redirect("/profile?tab=bookings");
 };
 

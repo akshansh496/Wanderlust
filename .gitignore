@@ -4,3 +4,4 @@ node_modules/
 .DS_Store
 __MACOSX/
 uploads/
+mongodb_data/
